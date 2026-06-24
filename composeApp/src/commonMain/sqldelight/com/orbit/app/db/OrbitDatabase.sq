@@ -1,0 +1,50 @@
+CREATE TABLE ScheduleEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    title TEXT NOT NULL,
+    startTime TEXT NOT NULL,
+    endTime TEXT NOT NULL,
+    locationJson TEXT,
+    recurrenceJson TEXT,
+    participantsJson TEXT,
+    updatedAt INTEGER NOT NULL,
+    isDeleted INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE ChangelogEntity (
+    id TEXT NOT NULL PRIMARY KEY,
+    entityId TEXT NOT NULL,
+    entityType TEXT NOT NULL,
+    mutationType TEXT NOT NULL,
+    serializedData TEXT NOT NULL,
+    sequenceNumber INTEGER NOT NULL,
+    deviceId TEXT NOT NULL,
+    timestamp INTEGER NOT NULL
+);
+
+-- Schedule queries
+selectAllSchedules:
+SELECT * FROM ScheduleEntity WHERE isDeleted = 0;
+
+selectScheduleById:
+SELECT * FROM ScheduleEntity WHERE id = ?;
+
+insertSchedule:
+INSERT OR REPLACE INTO ScheduleEntity (id, title, startTime, endTime, locationJson, recurrenceJson, participantsJson, updatedAt, isDeleted)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteScheduleSoft:
+UPDATE ScheduleEntity SET isDeleted = 1, updatedAt = ? WHERE id = ?;
+
+deleteScheduleHard:
+DELETE FROM ScheduleEntity WHERE id = ?;
+
+-- Sync queries
+selectChangelogsSince:
+SELECT * FROM ChangelogEntity WHERE sequenceNumber > ? ORDER BY sequenceNumber ASC;
+
+selectLatestSequenceForDevice:
+SELECT MAX(sequenceNumber) AS maxSeq FROM ChangelogEntity WHERE deviceId = ?;
+
+insertChangelog:
+INSERT INTO ChangelogEntity (id, entityId, entityType, mutationType, serializedData, sequenceNumber, deviceId, timestamp)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
