@@ -1,0 +1,185 @@
+Starting a Gradle Daemon, 1 busy and 1 stopped Daemons could not be reused, use --status for details
+
+> Configure project :composeApp
+w: Kotlin Multiplatform <-> Android Gradle Plugin compatibility issue:
+The applied Android Gradle Plugin version (8.7.0) is higher 
+than the maximum known to the Kotlin Gradle Plugin.
+Tooling stability in such configuration isn't tested, please report encountered issues to https://kotl.in/issue
+
+Minimum supported Android Gradle Plugin version: 7.1
+Maximum tested Android Gradle Plugin version: 8.5
+
+To suppress this message add 'kotlin.mpp.androidGradlePluginCompatibility.nowarn=true' to your gradle.properties
+
+
+> Task :composeApp:checkKotlinGradlePluginConfigurationErrors SKIPPED
+> Task :composeApp:convertXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForCommonMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForCommonMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForCommonMain NO-SOURCE
+> Task :composeApp:convertXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :composeApp:copyNonXmlValueResourcesForDesktopMain NO-SOURCE
+> Task :composeApp:prepareComposeResourcesTaskForDesktopMain NO-SOURCE
+> Task :composeApp:generateResourceAccessorsForDesktopMain NO-SOURCE
+> Task :composeApp:generateActualResourceCollectorsForDesktopMain UP-TO-DATE
+> Task :composeApp:generateCommonMainOrbitDatabaseInterface UP-TO-DATE
+> Task :composeApp:generateComposeResClass UP-TO-DATE
+> Task :composeApp:generateExpectResourceCollectorsForCommonMain UP-TO-DATE
+> Task :composeApp:compileKotlinDesktop UP-TO-DATE
+> Task :composeApp:assembleDesktopMainResources UP-TO-DATE
+> Task :composeApp:desktopProcessResources UP-TO-DATE
+> Task :composeApp:desktopMainClasses UP-TO-DATE
+> Task :composeApp:desktopJar UP-TO-DATE
+> Task :composeApp:prepareAppResources NO-SOURCE
+
+> Task :composeApp:run
+SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+SLF4J: See http://www.slf4j.org/codes.html#StaticLoggerBinder for further details.
+Exception in thread "AWT-EventQueue-0" java.lang.IllegalArgumentException: maxWidth(-1) must be >= than minWidth(0)
+	at androidx.compose.ui.unit.InlineClassHelperKt.throwIllegalArgumentException(InlineClassHelper.kt:30)
+	at androidx.compose.ui.unit.ConstraintsKt.Constraints(Constraints.kt:721)
+	at androidx.compose.ui.text.TextPainterKt.textLayoutConstraints-v_w8tDc(TextPainter.kt:397)
+	at androidx.compose.ui.text.TextPainterKt.drawText-TPWCCtM(TextPainter.kt:228)
+	at androidx.compose.ui.text.TextPainterKt.drawText-TPWCCtM$default(TextPainter.kt:211)
+	at com.orbit.app.ui.AppKt.NavigationTab$lambda$248$lambda$247$lambda$246$lambda$233$lambda$232(App.kt:2437)
+	at androidx.compose.ui.draw.DrawBackgroundModifier.draw(DrawModifier.kt:127)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.drawDirect-eZhPAX0$ui(LayoutNodeDrawScope.kt:110)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.draw-eZhPAX0$ui(LayoutNodeDrawScope.kt:89)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:456)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutModifierNodeCoordinator.performDraw(LayoutModifierNodeCoordinator.kt:280)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutNode.draw$ui(LayoutNode.kt:999)
+	at androidx.compose.ui.node.InnerNodeCoordinator.performDraw(InnerNodeCoordinator.kt:196)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.drawContent(LayoutNodeDrawScope.kt:68)
+	at androidx.compose.foundation.BorderModifierNode$drawRoundRectBorder$1.invoke(Border.kt:317)
+	at androidx.compose.foundation.BorderModifierNode$drawRoundRectBorder$1.invoke(Border.kt:316)
+	at androidx.compose.ui.draw.CacheDrawModifierNodeImpl.draw(DrawModifier.kt:300)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.drawDirect-eZhPAX0$ui(LayoutNodeDrawScope.kt:110)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.performDraw(LayoutNodeDrawScope.kt:78)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.drawContent(LayoutNodeDrawScope.kt:57)
+	at androidx.compose.foundation.BackgroundNode.draw(Background.kt:163)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.drawDirect-eZhPAX0$ui(LayoutNodeDrawScope.kt:110)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.draw-eZhPAX0$ui(LayoutNodeDrawScope.kt:89)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:456)
+	at androidx.compose.ui.node.NodeCoordinator.access$drawContainedDrawModifiers(NodeCoordinator.kt:58)
+	at androidx.compose.ui.node.NodeCoordinator$drawBlock$1$1.invoke(NodeCoordinator.kt:475)
+	at androidx.compose.ui.node.NodeCoordinator$drawBlock$1$1.invoke(NodeCoordinator.kt:474)
+	at androidx.compose.runtime.snapshots.Snapshot$Companion.observe(Snapshot.kt:504)
+	at androidx.compose.runtime.snapshots.SnapshotStateObserver$ObservedScopeMap.observe(SnapshotStateObserver.kt:505)
+	at androidx.compose.runtime.snapshots.SnapshotStateObserver.observeReads(SnapshotStateObserver.kt:261)
+	at androidx.compose.ui.node.OwnerSnapshotObserver.observeReads$ui(OwnerSnapshotObserver.kt:133)
+	at androidx.compose.ui.node.NodeCoordinator$drawBlock$1.invoke(NodeCoordinator.kt:474)
+	at androidx.compose.ui.node.NodeCoordinator$drawBlock$1.invoke(NodeCoordinator.kt:472)
+	at androidx.compose.ui.platform.RenderNodeLayer.performDrawLayer(RenderNodeLayer.skiko.kt:298)
+	at androidx.compose.ui.platform.RenderNodeLayer.drawLayer(RenderNodeLayer.skiko.kt:238)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:440)
+	at androidx.compose.ui.node.LayoutModifierNodeCoordinator.performDraw(LayoutModifierNodeCoordinator.kt:280)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutModifierNodeCoordinator.performDraw(LayoutModifierNodeCoordinator.kt:280)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutNode.draw$ui(LayoutNode.kt:999)
+	at androidx.compose.ui.node.InnerNodeCoordinator.performDraw(InnerNodeCoordinator.kt:196)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutModifierNodeCoordinator.performDraw(LayoutModifierNodeCoordinator.kt:280)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutNode.draw$ui(LayoutNode.kt:999)
+	at androidx.compose.ui.node.InnerNodeCoordinator.performDraw(InnerNodeCoordinator.kt:196)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutModifierNodeCoordinator.performDraw(LayoutModifierNodeCoordinator.kt:280)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutNode.draw$ui(LayoutNode.kt:999)
+	at androidx.compose.ui.node.InnerNodeCoordinator.performDraw(InnerNodeCoordinator.kt:196)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutModifierNodeCoordinator.performDraw(LayoutModifierNodeCoordinator.kt:280)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutModifierNodeCoordinator.performDraw(LayoutModifierNodeCoordinator.kt:280)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutNode.draw$ui(LayoutNode.kt:999)
+	at androidx.compose.ui.node.InnerNodeCoordinator.performDraw(InnerNodeCoordinator.kt:196)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutModifierNodeCoordinator.performDraw(LayoutModifierNodeCoordinator.kt:280)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutNode.draw$ui(LayoutNode.kt:999)
+	at androidx.compose.ui.node.InnerNodeCoordinator.performDraw(InnerNodeCoordinator.kt:196)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.drawContent(LayoutNodeDrawScope.kt:68)
+	at androidx.compose.foundation.BackgroundNode.draw(Background.kt:163)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.drawDirect-eZhPAX0$ui(LayoutNodeDrawScope.kt:110)
+	at androidx.compose.ui.node.LayoutNodeDrawScope.draw-eZhPAX0$ui(LayoutNodeDrawScope.kt:89)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:456)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutModifierNodeCoordinator.performDraw(LayoutModifierNodeCoordinator.kt:280)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutNode.draw$ui(LayoutNode.kt:999)
+	at androidx.compose.ui.node.InnerNodeCoordinator.performDraw(InnerNodeCoordinator.kt:196)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutNode.draw$ui(LayoutNode.kt:999)
+	at androidx.compose.ui.node.InnerNodeCoordinator.performDraw(InnerNodeCoordinator.kt:196)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.access$drawContainedDrawModifiers(NodeCoordinator.kt:58)
+	at androidx.compose.ui.node.NodeCoordinator$drawBlock$1$1.invoke(NodeCoordinator.kt:475)
+	at androidx.compose.ui.node.NodeCoordinator$drawBlock$1$1.invoke(NodeCoordinator.kt:474)
+	at androidx.compose.runtime.snapshots.Snapshot$Companion.observe(Snapshot.kt:2442)
+	at androidx.compose.runtime.snapshots.SnapshotStateObserver$ObservedScopeMap.observe(SnapshotStateObserver.kt:505)
+	at androidx.compose.runtime.snapshots.SnapshotStateObserver.observeReads(SnapshotStateObserver.kt:261)
+	at androidx.compose.ui.node.OwnerSnapshotObserver.observeReads$ui(OwnerSnapshotObserver.kt:133)
+	at androidx.compose.ui.node.NodeCoordinator$drawBlock$1.invoke(NodeCoordinator.kt:474)
+	at androidx.compose.ui.node.NodeCoordinator$drawBlock$1.invoke(NodeCoordinator.kt:472)
+	at androidx.compose.ui.platform.RenderNodeLayer.performDrawLayer(RenderNodeLayer.skiko.kt:298)
+	at androidx.compose.ui.platform.RenderNodeLayer.drawLayer(RenderNodeLayer.skiko.kt:238)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:440)
+	at androidx.compose.ui.node.LayoutNode.draw$ui(LayoutNode.kt:999)
+	at androidx.compose.ui.node.InnerNodeCoordinator.performDraw(InnerNodeCoordinator.kt:196)
+	at androidx.compose.ui.node.NodeCoordinator.drawContainedDrawModifiers(NodeCoordinator.kt:453)
+	at androidx.compose.ui.node.NodeCoordinator.draw(NodeCoordinator.kt:445)
+	at androidx.compose.ui.node.LayoutNode.draw$ui(LayoutNode.kt:999)
+	at androidx.compose.ui.node.RootNodeOwner.draw(RootNodeOwner.skiko.kt:227)
+	at androidx.compose.ui.scene.CanvasLayersComposeSceneImpl.draw(CanvasLayersComposeScene.skiko.kt:250)
+	at androidx.compose.ui.scene.BaseComposeScene.render(BaseComposeScene.skiko.kt:190)
+	at androidx.compose.ui.scene.ComposeSceneMediator$onRender$1$1.invoke(ComposeSceneMediator.desktop.kt:574)
+	at androidx.compose.ui.scene.ComposeSceneMediator$onRender$1$1.invoke(ComposeSceneMediator.desktop.kt:572)
+	at androidx.compose.ui.viewinterop.SwingInteropContainer.postponingExecutingScheduledUpdates(SwingInteropContainer.desktop.kt:229)
+	at androidx.compose.ui.scene.ComposeSceneMediator.onRender(ComposeSceneMediator.desktop.kt:572)
+	at org.jetbrains.skiko.SkiaLayer.update$skiko(SkiaLayer.awt.kt:533)
+	at org.jetbrains.skiko.redrawer.AWTRedrawer.update(AWTRedrawer.kt:54)
+	at org.jetbrains.skiko.redrawer.LinuxOpenGLRedrawer$Companion$frameDispatcher$1.invokeSuspend(LinuxOpenGLRedrawer.kt:122)
+	at kotlin.coroutines.jvm.internal.BaseContinuationImpl.resumeWith(ContinuationImpl.kt:33)
+	at kotlinx.coroutines.DispatchedTask.run(DispatchedTask.kt:101)
+	at java.desktop/java.awt.event.InvocationEvent.dispatch(InvocationEvent.java:318)
+	at java.desktop/java.awt.EventQueue.dispatchEventImpl(EventQueue.java:773)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:720)
+	at java.desktop/java.awt.EventQueue$4.run(EventQueue.java:714)
+	at java.base/java.security.AccessController.doPrivileged(AccessController.java:400)
+	at java.base/java.security.ProtectionDomain$JavaSecurityAccessImpl.doIntersectionPrivilege(ProtectionDomain.java:87)
+	at java.desktop/java.awt.EventQueue.dispatchEvent(EventQueue.java:742)
+	at java.desktop/java.awt.EventDispatchThread.pumpOneEventForFilters(EventDispatchThread.java:203)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForFilter(EventDispatchThread.java:124)
+	at java.desktop/java.awt.EventDispatchThread.pumpEventsForHierarchy(EventDispatchThread.java:113)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:109)
+	at java.desktop/java.awt.EventDispatchThread.pumpEvents(EventDispatchThread.java:101)
+	at java.desktop/java.awt.EventDispatchThread.run(EventDispatchThread.java:90)
+	Suppressed: kotlinx.coroutines.internal.DiagnosticCoroutineContextException: [StandaloneCoroutine{Cancelling}@6d166c99, SwingDispatcher@280d02d9]
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.9/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 29s
+9 actionable tasks: 1 executed, 8 up-to-date

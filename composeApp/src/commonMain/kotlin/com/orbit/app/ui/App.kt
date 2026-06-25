@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -37,46 +38,259 @@ import androidx.compose.ui.input.key.*
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.material.icons.filled.Settings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.orbit.app.db.ScheduleRepository
-import com.orbit.app.engine.NavigationEngine
-import com.orbit.app.engine.RecurrenceEngine
-import com.orbit.app.engine.PeriodAggregate
+import com.orbit.app.engine.*
 import com.orbit.app.model.*
 import com.orbit.app.socket.AiControlSocketServer
 import com.orbit.app.sync.*
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.datetime.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.encodeToString
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
-
+import kotlin.math.*
 // --- Design Palette & Typography ---
+data class AppTheme(
+    val id: String,
+    val nameKo: String,
+    val nameEn: String,
+    val isDark: Boolean,
+    val backgroundColor: Color,
+    val surfaceCardColor: Color,
+    val borderColor: Color,
+    val textPrimaryColor: Color,
+    val textSecondaryColor: Color,
+    val accentPurpleColor: Color,
+    val accentCyanColor: Color,
+    val activeGreenColor: Color,
+    val mapBackground: Color,
+    val mapMotorway: Color,
+    val mapPrimary: Color,
+    val mapSecondary: Color,
+    val mapTertiary: Color,
+    val mapMinor: Color,
+    val mapWater: Color,
+    val mapTransit: Color
+)
+
+object AppThemes {
+    val DarkSlate = AppTheme(
+        id = "dark_slate",
+        nameKo = "다크 슬레이트",
+        nameEn = "Dark Slate",
+        isDark = true,
+        backgroundColor = Color(0xFF0A0C10),
+        surfaceCardColor = Color(0xFF131722),
+        borderColor = Color(0x1BFFFFFF),
+        textPrimaryColor = Color(0xFFF1F3F5),
+        textSecondaryColor = Color(0xFF8B949E),
+        accentPurpleColor = Color(0xFF8E7CFF),
+        accentCyanColor = Color(0xFF4ECCFF),
+        activeGreenColor = Color(0xFF00E676),
+        mapBackground = Color(0xFF0D1117),
+        mapMotorway = Color(0xFFFFB74D),
+        mapPrimary = Color(0xFFFFD54F),
+        mapSecondary = Color(0xFF81C784),
+        mapTertiary = Color(0xFF64B5F6),
+        mapMinor = Color(0xFF2C313C),
+        mapWater = Color(0xFF1D2D44),
+        mapTransit = Color(0xFF2E3E56)
+    )
+
+    val LightClassic = AppTheme(
+        id = "light_classic",
+        nameKo = "클래식 라이트",
+        nameEn = "Light Classic",
+        isDark = false,
+        backgroundColor = Color(0xFFF8F9FA),
+        surfaceCardColor = Color(0xFFFFFFFF),
+        borderColor = Color(0x1B000000),
+        textPrimaryColor = Color(0xFF212529),
+        textSecondaryColor = Color(0xFF495057),
+        accentPurpleColor = Color(0xFF6200EE),
+        accentCyanColor = Color(0xFF03DAC6),
+        activeGreenColor = Color(0xFF4CAF50),
+        mapBackground = Color(0xFFF0F0F0),
+        mapMotorway = Color(0xFFF57C00),
+        mapPrimary = Color(0xFFFBC02D),
+        mapSecondary = Color(0xFF388E3C),
+        mapTertiary = Color(0xFF1976D2),
+        mapMinor = Color(0xFFDDDDDD),
+        mapWater = Color(0xFFB0C4DE),
+        mapTransit = Color(0xFFD2B48C)
+    )
+
+    val OceanBreeze = AppTheme(
+        id = "ocean_breeze",
+        nameKo = "오션 브리즈",
+        nameEn = "Ocean Breeze",
+        isDark = true,
+        backgroundColor = Color(0xFF0B192C),
+        surfaceCardColor = Color(0xFF1E3E62),
+        borderColor = Color(0x1F80DEEA),
+        textPrimaryColor = Color(0xFFE0F7FA),
+        textSecondaryColor = Color(0xFF80DEEA),
+        accentPurpleColor = Color(0xFF00E5FF),
+        accentCyanColor = Color(0xFF00B0FF),
+        activeGreenColor = Color(0xFF00E676),
+        mapBackground = Color(0xFF001E3D),
+        mapMotorway = Color(0xFF00E5FF),
+        mapPrimary = Color(0xFF80DEEA),
+        mapSecondary = Color(0xFF4DD0E1),
+        mapTertiary = Color(0xFF26C6DA),
+        mapMinor = Color(0xFF123E67),
+        mapWater = Color(0xFF002B5B),
+        mapTransit = Color(0xFF004D7A)
+    )
+
+    val SunsetRose = AppTheme(
+        id = "sunset_rose",
+        nameKo = "선셋 로즈",
+        nameEn = "Sunset Rose",
+        isDark = true,
+        backgroundColor = Color(0xFF1A0F1A),
+        surfaceCardColor = Color(0xFF2D182D),
+        borderColor = Color(0x1FFF8A80),
+        textPrimaryColor = Color(0xFFFFEBEE),
+        textSecondaryColor = Color(0xFFFFAB91),
+        accentPurpleColor = Color(0xFFFF4081),
+        accentCyanColor = Color(0xFFFF9100),
+        activeGreenColor = Color(0xFF00E676),
+        mapBackground = Color(0xFF251225),
+        mapMotorway = Color(0xFFFF5252),
+        mapPrimary = Color(0xFFFF7043),
+        mapSecondary = Color(0xFFFF8A65),
+        mapTertiary = Color(0xFFFFAB91),
+        mapMinor = Color(0xFF422142),
+        mapWater = Color(0xFF2E1A47),
+        mapTransit = Color(0xFF3F2B5C)
+    )
+
+    val ForestMoss = AppTheme(
+        id = "forest_moss",
+        nameKo = "포레스트 모스",
+        nameEn = "Forest Moss",
+        isDark = true,
+        backgroundColor = Color(0xFF0C140C),
+        surfaceCardColor = Color(0xFF142414),
+        borderColor = Color(0x1FA5D6A7),
+        textPrimaryColor = Color(0xFFE8F5E9),
+        textSecondaryColor = Color(0xFFA5D6A7),
+        accentPurpleColor = Color(0xFF4CAF50),
+        accentCyanColor = Color(0xFF81C784),
+        activeGreenColor = Color(0xFF69F0AE),
+        mapBackground = Color(0xFF0A1C0A),
+        mapMotorway = Color(0xFF4CAF50),
+        mapPrimary = Color(0xFF66BB6A),
+        mapSecondary = Color(0xFF81C784),
+        mapTertiary = Color(0xFFA5D6A7),
+        mapMinor = Color(0xFF1E3A1E),
+        mapWater = Color(0xFF0E2E3D),
+        mapTransit = Color(0xFF1C4E4C)
+    )
+
+    val CyberpunkNeon = AppTheme(
+        id = "cyberpunk_neon",
+        nameKo = "사이버펑크 네온",
+        nameEn = "Cyberpunk Neon",
+        isDark = true,
+        backgroundColor = Color(0xFF000000),
+        surfaceCardColor = Color(0xFF0D0D0D),
+        borderColor = Color(0x3FFF007F),
+        textPrimaryColor = Color(0xFFFFFFFF),
+        textSecondaryColor = Color(0xFF00FFFF),
+        accentPurpleColor = Color(0xFFFF007F),
+        accentCyanColor = Color(0xFF00FFFF),
+        activeGreenColor = Color(0xFF39FF14),
+        mapBackground = Color(0xFF050505),
+        mapMotorway = Color(0xFFFF007F),
+        mapPrimary = Color(0xFF00FFFF),
+        mapSecondary = Color(0xFF7B00FF),
+        mapTertiary = Color(0xFFFF00D4),
+        mapMinor = Color(0xFF1A1A1A),
+        mapWater = Color(0xFF001233),
+        mapTransit = Color(0xFF003F88)
+    )
+
+    val MonochromeSlate = AppTheme(
+        id = "monochrome_slate",
+        nameKo = "모노크롬 슬레이트",
+        nameEn = "Monochrome Slate",
+        isDark = true,
+        backgroundColor = Color(0xFF000000),
+        surfaceCardColor = Color(0xFF111111),
+        borderColor = Color(0xFF333333),
+        textPrimaryColor = Color(0xFFFFFFFF),
+        textSecondaryColor = Color(0xFF888888),
+        accentPurpleColor = Color(0xFFEEEEEE),
+        accentCyanColor = Color(0xFFCCCCCC),
+        activeGreenColor = Color(0xFFFFFFFF),
+        mapBackground = Color(0xFF000000),
+        mapMotorway = Color(0xFFFFFFFF),
+        mapPrimary = Color(0xFFCCCCCC),
+        mapSecondary = Color(0xFF999999),
+        mapTertiary = Color(0xFF666666),
+        mapMinor = Color(0xFF222222),
+        mapWater = Color(0xFF111111),
+        mapTransit = Color(0xFF1F1F1F)
+    )
+
+    val allThemes = listOf(
+        DarkSlate,
+        LightClassic,
+        OceanBreeze,
+        SunsetRose,
+        ForestMoss,
+        CyberpunkNeon,
+        MonochromeSlate
+    )
+}
+
 val isDarkModeState = mutableStateOf(true)
+val currentThemeState = mutableStateOf(AppThemes.DarkSlate)
 
 val SlateDarkBg: Color
-    get() = if (isDarkModeState.value) Color(0xFF0A0C10) else Color(0xFFF8F9FA)
+    get() = currentThemeState.value.backgroundColor
 val SurfaceCard: Color
-    get() = if (isDarkModeState.value) Color(0xFF131722) else Color(0xFFFFFFFF)
+    get() = currentThemeState.value.surfaceCardColor
 val BorderColor: Color
-    get() = if (isDarkModeState.value) Color(0x1BFFFFFF) else Color(0x1B000000)
-val AccentPurple = Color(0xFF8E7CFF)
-val AccentCyan = Color(0xFF4ECCFF)
-val ActiveGreen = Color(0xFF00E676)
+    get() = currentThemeState.value.borderColor
+val AccentPurple: Color
+    get() = currentThemeState.value.accentPurpleColor
+val AccentCyan: Color
+    get() = currentThemeState.value.accentCyanColor
+val ActiveGreen: Color
+    get() = currentThemeState.value.activeGreenColor
 val TextPrimary: Color
-    get() = if (isDarkModeState.value) Color(0xFFF1F3F5) else Color(0xFF212529)
+    get() = currentThemeState.value.textPrimaryColor
 val TextSecondary: Color
-    get() = if (isDarkModeState.value) Color(0xFF8B949E) else Color(0xFF495057)
+    get() = currentThemeState.value.textSecondaryColor
+
+@Composable
+fun appTextFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedTextColor = TextPrimary,
+    unfocusedTextColor = TextPrimary,
+    disabledTextColor = TextSecondary.copy(alpha = 0.5f),
+    cursorColor = AccentPurple,
+    focusedBorderColor = AccentPurple,
+    unfocusedBorderColor = BorderColor,
+    focusedLabelColor = AccentPurple,
+    unfocusedLabelColor = TextSecondary,
+    focusedPlaceholderColor = TextSecondary,
+    unfocusedPlaceholderColor = TextSecondary,
+    focusedContainerColor = Color.Transparent,
+    unfocusedContainerColor = Color.Transparent
+)
 
 enum class AppTab {
     SCHEDULES,
@@ -90,6 +304,58 @@ enum class AppTab {
 fun App(repository: ScheduleRepository, deviceId: String) {
     var selectedLanguage by remember { mutableStateOf(Language.KOREAN) }
     var currentTab by remember { mutableStateOf(AppTab.SCHEDULES) }
+
+    var mapData by remember { mutableStateOf<OsmMapData?>(null) }
+    var spatialIndex by remember { mutableStateOf<SpatialGridIndex?>(null) }
+    var isMapLoading by remember { mutableStateOf(false) }
+    var mapLoadProgress by remember { mutableStateOf("") }
+    var mapLoadError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        val cacheDir = java.io.File("./maps_cache")
+        val pbfFile = java.io.File(cacheDir, "south-korea-latest.osm.pbf")
+        if (pbfFile.exists()) {
+            isMapLoading = true
+            mapLoadProgress = "Parsing PBF map..."
+            withContext(Dispatchers.Default) {
+                try {
+                    val cacheFile = java.io.File(pbfFile.parentFile, "south-korea-latest.cache.v4.json.gz")
+                    val parsed = if (cacheFile.exists() && cacheFile.lastModified() > pbfFile.lastModified()) {
+                        mapLoadProgress = "Loading cached map..."
+                        try {
+                            OsmPbfParser.loadFromCache(cacheFile)
+                        } catch (cacheEx: Exception) {
+                            println("Cache load failed (possibly corrupted), deleting cache and re-parsing PBF: ${cacheEx.message}")
+                            try {
+                                cacheFile.delete()
+                            } catch (de: Exception) {
+                                // Ignore delete errors
+                            }
+                            mapLoadProgress = "Re-parsing PBF (Cache corrupted)..."
+                            val p = OsmPbfParser.parsePbf(pbfFile)
+                            mapLoadProgress = "Saving map cache..."
+                            OsmPbfParser.saveToCache(cacheFile, p)
+                            p
+                        }
+                    } else {
+                        mapLoadProgress = "Parsing OSM PBF map..."
+                        val p = OsmPbfParser.parsePbf(pbfFile)
+                        mapLoadProgress = "Saving map cache..."
+                        OsmPbfParser.saveToCache(cacheFile, p)
+                        p
+                    }
+                    mapData = parsed
+                    mapLoadProgress = "Building Spatial Grid Index..."
+                    spatialIndex = SpatialGridIndex(parsed.ways, parsed.places)
+                    isMapLoading = false
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    mapLoadError = "Failed to load map: ${e.message}"
+                    isMapLoading = false
+                }
+            }
+        }
+    }
     var schedules by remember { mutableStateOf(emptyList<Schedule>()) }
     val scope = rememberCoroutineScope()
 
@@ -379,6 +645,8 @@ fun App(repository: ScheduleRepository, deviceId: String) {
                     AppTab.SCHEDULES -> SchedulesTab(
                         schedules = schedules,
                         lang = selectedLanguage,
+                        mapData = mapData,
+                        spatialIndex = spatialIndex,
                         onAddSchedule = { newSchedule ->
                             repository.upsertSchedule(newSchedule, deviceId)
                             schedules = repository.getAllSchedules()
@@ -388,7 +656,15 @@ fun App(repository: ScheduleRepository, deviceId: String) {
                             schedules = repository.getAllSchedules()
                         }
                     )
-                    AppTab.NAVIGATION -> NavigationTab(schedules = schedules, lang = selectedLanguage)
+                    AppTab.NAVIGATION -> NavigationTab(
+                        schedules = schedules,
+                        lang = selectedLanguage,
+                        mapData = mapData,
+                        spatialIndex = spatialIndex,
+                        isMapLoading = isMapLoading,
+                        mapLoadProgress = mapLoadProgress,
+                        mapLoadError = mapLoadError
+                    )
                     AppTab.SYNC_ENGINE -> SyncTab(
                         repository = repository,
                         deviceId = deviceId,
@@ -460,6 +736,8 @@ fun NavigationButton(
 fun SchedulesTab(
     schedules: List<Schedule>,
     lang: Language,
+    mapData: OsmMapData?,
+    spatialIndex: SpatialGridIndex?,
     onAddSchedule: (Schedule) -> Unit,
     onDeleteSchedule: (String) -> Unit
 ) {
@@ -740,6 +1018,8 @@ fun SchedulesTab(
     if (showAddDialog) {
         AddScheduleDialog(
             lang = lang,
+            mapData = mapData,
+            spatialIndex = spatialIndex,
             onDismiss = { showAddDialog = false },
             onConfirm = { schedule ->
                 onAddSchedule(schedule)
@@ -1480,8 +1760,89 @@ fun ScheduleListItem(schedule: Schedule, onDelete: () -> Unit) {
     }
 }
 
+// ==========================================
+// 🗺️ MAP UTILITIES & PROJECTION
+// ==========================================
+fun getPixelX(lon: Double, zoom: Double): Double {
+    return 256.0 * Math.pow(2.0, zoom) * (lon + 180.0) / 360.0
+}
+
+fun getPixelY(lat: Double, zoom: Double): Double {
+    val latRad = Math.toRadians(lat)
+    return 256.0 * Math.pow(2.0, zoom) * (1.0 - Math.log(Math.tan(latRad) + 1.0 / Math.cos(latRad)) / Math.PI) / 2.0
+}
+
+fun pixelXToLon(x: Double, zoom: Double): Double {
+    return x * 360.0 / (256.0 * Math.pow(2.0, zoom)) - 180.0
+}
+
+fun pixelYToLat(y: Double, zoom: Double): Double {
+    val n = Math.PI - 2.0 * Math.PI * y / (256.0 * Math.pow(2.0, zoom))
+    return Math.toDegrees(Math.atan(Math.sinh(n)))
+}
+
+fun findNearestPlaceLocal(lat: Double, lon: Double, mapData: OsmMapData, spatialIndex: SpatialGridIndex?): Pair<OsmPlace, Double>? {
+    val cellPlaces = spatialIndex?.queryPlaces(lat - 0.05, lat + 0.05, lon - 0.05, lon + 0.05) ?: mapData.places
+    var bestPlace: OsmPlace? = null
+    var bestDist = Double.MAX_VALUE
+    for (place in cellPlaces) {
+        val dx = place.lon - lon
+        val dy = place.lat - lat
+        val dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < bestDist) {
+            bestDist = dist
+            bestPlace = place
+        }
+    }
+    return if (bestPlace != null) {
+        val km = bestDist * 111.0
+        Pair(bestPlace, km * 1000.0) // Return place and distance in meters
+    } else {
+        null
+    }
+}
+
+fun getRoadColor(type: String, theme: AppTheme): Color {
+    return when (type) {
+        "motorway", "trunk" -> theme.mapMotorway
+        "primary" -> theme.mapPrimary
+        "secondary" -> theme.mapSecondary
+        "tertiary" -> theme.mapTertiary
+        else -> theme.mapMinor
+    }
+}
+
+fun getRoadWidthDp(type: String, zoom: Double): Float {
+    val base = when (type) {
+        "motorway", "trunk" -> 4.0f
+        "primary" -> 3.0f
+        "secondary" -> 2.0f
+        "tertiary" -> 1.5f
+        else -> 1.0f
+    }
+    val factor = if (zoom >= 15.0) 1.5f else if (zoom <= 11.0) 0.7f else 1.0f
+    return base * factor
+}
+
+fun shouldShowPlace(type: String, zoom: Double): Boolean {
+    return when (type) {
+        "city" -> zoom >= 8.0
+        "town" -> zoom >= 10.0
+        "village" -> zoom >= 12.0
+        "suburb", "neighbourhood" -> zoom >= 14.0
+        else -> zoom >= 15.0
+    }
+}
+
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-fun AddScheduleDialog(lang: Language, onDismiss: () -> Unit, onConfirm: (Schedule) -> Unit) {
+fun AddScheduleDialog(
+    lang: Language,
+    mapData: OsmMapData?,
+    spatialIndex: SpatialGridIndex?,
+    onDismiss: () -> Unit,
+    onConfirm: (Schedule) -> Unit
+) {
     var title by remember { mutableStateOf("") }
     var startTimeText by remember { mutableStateOf("2026-06-01T10:00:00Z") }
     var endTimeText by remember { mutableStateOf("2026-06-01T11:00:00Z") }
@@ -1501,6 +1862,30 @@ fun AddScheduleDialog(lang: Language, onDismiss: () -> Unit, onConfirm: (Schedul
     var participantsList by remember { mutableStateOf(emptyList<Participant>()) }
 
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Map Picker & Search States
+    var miniMapZoom by remember { mutableStateOf(15.0) }
+    var searchQuery by remember { mutableStateOf("") }
+    var suggestions by remember { mutableStateOf(emptyList<OsmPlace>()) }
+    var nearestPlace by remember { mutableStateOf<Pair<OsmPlace, Double>?>(null) }
+
+    fun updateSuggestions(query: String) {
+        searchQuery = query
+        suggestions = if (query.length >= 2 && mapData != null) {
+            mapData.places.filter { it.name.contains(query, ignoreCase = true) }.take(5)
+        } else {
+            emptyList()
+        }
+    }
+
+    LaunchedEffect(locLat, locLon, mapData) {
+        val latVal = locLat.toDoubleOrNull() ?: 37.5665
+        val lonVal = locLon.toDoubleOrNull() ?: 126.9780
+        val data = mapData
+        if (data != null) {
+            nearestPlace = findNearestPlaceLocal(latVal, lonVal, data, spatialIndex)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1523,47 +1908,266 @@ fun AddScheduleDialog(lang: Language, onDismiss: () -> Unit, onConfirm: (Schedul
                         value = title,
                         onValueChange = { title = it },
                         label = { Text(Localization.get("event_title", lang)) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = appTextFieldColors()
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = startTimeText,
                         onValueChange = { startTimeText = it },
                         label = { Text(Localization.get("start_time", lang)) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = appTextFieldColors()
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = endTimeText,
                         onValueChange = { endTimeText = it },
                         label = { Text(Localization.get("end_time", lang)) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = appTextFieldColors()
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(Localization.get("geo_location", lang), fontWeight = FontWeight.Bold, color = AccentCyan, fontSize = 14.sp)
-                    OutlinedTextField(
-                        value = locName,
-                        onValueChange = { locName = it },
-                        label = { Text(Localization.get("loc_name", lang)) },
-                        modifier = Modifier.fillMaxWidth()
-                    )
                     Spacer(modifier = Modifier.height(6.dp))
+
+                    // Address Search Field
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { 
+                            updateSuggestions(it)
+                            locName = it
+                        },
+                        label = { Text("주소/장소 검색 (Search Address/Place)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = appTextFieldColors()
+                    )
+
+                    // Floating suggestions dropdown
+                    if (suggestions.isNotEmpty()) {
+                        Surface(
+                            color = SurfaceCard,
+                            shadowElevation = 4.dp,
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                        ) {
+                            Column {
+                                suggestions.forEach { place ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                locLat = place.lat.toString()
+                                                locLon = place.lon.toString()
+                                                locName = place.name
+                                                searchQuery = place.name
+                                                suggestions = emptyList()
+                                            }
+                                            .padding(12.dp)
+                                    ) {
+                                        Text(place.name + " (${place.type})", color = TextPrimary, fontSize = 13.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Coordinates Inputs
                     Row {
                         OutlinedTextField(
                             value = locLat,
                             onValueChange = { locLat = it },
                             label = { Text(Localization.get("latitude", lang)) },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            colors = appTextFieldColors()
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         OutlinedTextField(
                             value = locLon,
                             onValueChange = { locLon = it },
                             label = { Text(Localization.get("longitude", lang)) },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            colors = appTextFieldColors()
                         )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Nearest place HUD & Autofill
+                    nearestPlace?.let { (place, dist) ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0x1F00E5FF), shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                "가장 가까운 곳: ${place.name} (${dist.toInt()}m)",
+                                color = AccentCyan,
+                                fontSize = 11.sp,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Button(
+                                onClick = {
+                                    locName = place.name
+                                    searchQuery = place.name
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = AccentCyan),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Text("자동입력", color = SlateDarkBg, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Interactive Mini Map Picker Canvas
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .background(currentThemeState.value.mapBackground)
+                            .clipToBounds()
+                    ) {
+                        val latVal = locLat.toDoubleOrNull() ?: 37.5665
+                        val lonVal = locLon.toDoubleOrNull() ?: 126.9780
+
+                        val path = remember { Path() }
+                        Canvas(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(miniMapZoom) {
+                                    detectDragGestures { change, dragAmount ->
+                                        change.consume()
+                                        // Read directly from the mutable states to get the latest updated values on each drag tick
+                                        val currentLon = locLon.toDoubleOrNull() ?: 126.9780
+                                        val currentLat = locLat.toDoubleOrNull() ?: 37.5665
+                                        val cx = getPixelX(currentLon, miniMapZoom)
+                                        val cy = getPixelY(currentLat, miniMapZoom)
+                                        val newCx = cx - dragAmount.x
+                                        val newCy = cy - dragAmount.y
+                                        locLon = String.format("%.6f", pixelXToLon(newCx, miniMapZoom))
+                                        locLat = String.format("%.6f", pixelYToLat(newCy, miniMapZoom))
+                                    }
+                                }
+                                .onPointerEvent(PointerEventType.Scroll) { event ->
+                                    val delta = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                    if (delta != 0f) {
+                                        val zoomChange = if (delta < 0) 1.0 else -1.0
+                                        miniMapZoom = (miniMapZoom + zoomChange).coerceIn(11.0, 18.0)
+                                    }
+                                }
+                        ) {
+                            val activeMapData = mapData ?: SimulatedMapData.data
+                            val canvasWidth = size.width
+                            val canvasHeight = size.height
+                            val centerX = getPixelX(lonVal, miniMapZoom)
+                            val centerY = getPixelY(latVal, miniMapZoom)
+
+                            fun toScreenX(lon: Double): Float = ((canvasWidth / 2) + (getPixelX(lon, miniMapZoom) - centerX)).toFloat()
+                            fun toScreenY(lat: Double): Float = ((canvasHeight / 2) + (getPixelY(lat, miniMapZoom) - centerY)).toFloat()
+
+                            val minLon = pixelXToLon(centerX - canvasWidth / 2, miniMapZoom)
+                            val maxLon = pixelXToLon(centerX + canvasWidth / 2, miniMapZoom)
+                            val minLat = pixelYToLat(centerY + canvasHeight / 2, miniMapZoom)
+                            val maxLat = pixelYToLat(centerY - canvasHeight / 2, miniMapZoom)
+
+                            val visibleWays = spatialIndex?.queryWays(minLat, maxLat, minLon, maxLon) ?: activeMapData.ways
+
+                            // 1. Draw Roads & Polygons
+                            for (way in visibleWays) {
+                                if (way.maxLat < minLat || way.minLat > maxLat || way.maxLon < minLon || way.minLon > maxLon) continue
+
+                                // Simple LOD check for mini map
+                                if (way.type == "building" && miniMapZoom < 15.0) continue
+                                if (way.type == "water" && miniMapZoom < 12.0) continue
+
+                                if (way.type !in listOf("building", "water")) {
+                                    if (miniMapZoom < 14.0 && way.type !in listOf("motorway", "trunk", "primary", "secondary")) continue
+                                }
+
+                                path.reset()
+                                var first = true
+                                for (coord in way.coords) {
+                                    val sx = toScreenX(coord.lon)
+                                    val sy = toScreenY(coord.lat)
+                                    if (first) {
+                                        path.moveTo(sx, sy)
+                                        first = false
+                                    } else {
+                                        path.lineTo(sx, sy)
+                                    }
+                                }
+
+                                if (way.type == "building") {
+                                    // Draw filled building polygon
+                                    drawPath(
+                                        path = path,
+                                        color = currentThemeState.value.surfaceCardColor.copy(alpha = 0.6f),
+                                        style = androidx.compose.ui.graphics.drawscope.Fill
+                                    )
+                                    drawPath(
+                                        path = path,
+                                        color = currentThemeState.value.accentPurpleColor.copy(alpha = 0.25f),
+                                        style = Stroke(width = 0.8f.dp.toPx())
+                                    )
+                                } else if (way.type == "water") {
+                                    // Draw filled water body
+                                    drawPath(
+                                        path = path,
+                                        color = currentThemeState.value.mapWater,
+                                        style = androidx.compose.ui.graphics.drawscope.Fill
+                                    )
+                                } else {
+                                    // Draw regular road stroke
+                                    drawPath(
+                                        path = path,
+                                        color = getRoadColor(way.type, currentThemeState.value),
+                                        style = Stroke(width = 1.5f.dp.toPx())
+                                    )
+                                }
+                            }
+
+                            // 2. Draw Center Crosshair (Red Pin)
+                            val ccX = canvasWidth / 2
+                            val ccY = canvasHeight / 2
+                            // Crosshair lines
+                            drawLine(Color.Red, Offset(ccX - 15f, ccY), Offset(ccX + 15f, ccY), strokeWidth = 2f)
+                            drawLine(Color.Red, Offset(ccX, ccY - 15f), Offset(ccX, ccY + 15f), strokeWidth = 2f)
+                            drawCircle(Color.Red, radius = 4f, center = Offset(ccX, ccY))
+                        }
+
+                        // Zoom buttons on mini map
+                        Column(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(8.dp)
+                        ) {
+                            Button(
+                                onClick = { miniMapZoom = (miniMapZoom + 1.0).coerceAtMost(18.0) },
+                                colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Text("+", color = TextPrimary, fontWeight = FontWeight.Bold)
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Button(
+                                onClick = { miniMapZoom = (miniMapZoom - 1.0).coerceAtLeast(11.0) },
+                                colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Text("-", color = TextPrimary, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -1592,14 +2196,16 @@ fun AddScheduleDialog(lang: Language, onDismiss: () -> Unit, onConfirm: (Schedul
                             value = recurInterval,
                             onValueChange = { recurInterval = it },
                             label = { Text(Localization.get("interval", lang)) },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = appTextFieldColors()
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         OutlinedTextField(
                             value = recurCount,
                             onValueChange = { recurCount = it },
                             label = { Text(Localization.get("count_limit", lang)) },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = appTextFieldColors()
                         )
                     }
 
@@ -1610,21 +2216,24 @@ fun AddScheduleDialog(lang: Language, onDismiss: () -> Unit, onConfirm: (Schedul
                         value = partName,
                         onValueChange = { partName = it },
                         label = { Text(Localization.get("display_name", lang)) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = appTextFieldColors()
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = partPhone,
                         onValueChange = { partPhone = it },
                         label = { Text(Localization.get("phone_num", lang)) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = appTextFieldColors()
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     OutlinedTextField(
                         value = partEmail,
                         onValueChange = { partEmail = it },
                         label = { Text(Localization.get("email_addr", lang)) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = appTextFieldColors()
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Button(
@@ -1719,8 +2328,17 @@ fun AddScheduleDialog(lang: Language, onDismiss: () -> Unit, onConfirm: (Schedul
 // ==========================================
 // 🧭 MAP & COMPASS NAVIGATION TAB
 // ==========================================
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
-fun NavigationTab(schedules: List<Schedule>, lang: Language) {
+fun NavigationTab(
+    schedules: List<Schedule>,
+    lang: Language,
+    mapData: OsmMapData?,
+    spatialIndex: SpatialGridIndex?,
+    isMapLoading: Boolean,
+    mapLoadProgress: String,
+    mapLoadError: String?
+) {
     val textMeasurer = rememberTextMeasurer()
     var myLat by remember { mutableStateOf("37.5665") } // Default Seoul City Hall
     var myLon by remember { mutableStateOf("126.9780") }
@@ -1729,6 +2347,27 @@ fun NavigationTab(schedules: List<Schedule>, lang: Language) {
     var bearingAngle by remember { mutableStateOf(0.0) }
     var distanceKm by remember { mutableStateOf(0.0) }
     var etaMinutes by remember { mutableStateOf(0.0) }
+
+    // Map state variables
+    var mapZoom by remember { mutableStateOf(14.0) }
+    var mapCenterLat by remember { mutableStateOf(37.5665) }
+    var mapCenterLon by remember { mutableStateOf(126.9780) }
+
+    // On start or when my location changes, center map to my location
+    LaunchedEffect(myLat, myLon) {
+        val latVal = myLat.toDoubleOrNull() ?: 37.5665
+        val lonVal = myLon.toDoubleOrNull() ?: 126.9780
+        mapCenterLat = latVal
+        mapCenterLon = lonVal
+    }
+
+    // Centering the map to selected target event
+    LaunchedEffect(selectedSchedule) {
+        selectedSchedule?.location?.let {
+            mapCenterLat = it.latitude
+            mapCenterLon = it.longitude
+        }
+    }
 
     // Recalculate bearing / distance dynamically
     fun updateCalculations() {
@@ -1788,7 +2427,7 @@ fun NavigationTab(schedules: List<Schedule>, lang: Language) {
                     when (lang) {
                         Language.KOREAN -> "시뮬레이션 모드 (오프라인 지도 없음)"
                         Language.JAPANESE -> "シミュレーションモード (オフライン地図なし)"
-                        Language.RUSSIAN -> "Режим симуляции (нет офлайн-карт)"
+                        Language.RUSSIAN -> "Режим 시муляции (нет офлайн-карт)"
                         else -> "Simulation Mode (No offline maps)"
                     }
                 },
@@ -1817,14 +2456,16 @@ fun NavigationTab(schedules: List<Schedule>, lang: Language) {
                     value = myLat,
                     onValueChange = { myLat = it },
                     label = { Text(Localization.get("lat_label", lang)) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = appTextFieldColors()
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 OutlinedTextField(
                     value = myLon,
                     onValueChange = { myLon = it },
                     label = { Text(Localization.get("lon_label", lang)) },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = appTextFieldColors()
                 )
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -1869,141 +2510,439 @@ fun NavigationTab(schedules: List<Schedule>, lang: Language) {
 
             Spacer(modifier = Modifier.width(20.dp))
 
-            // Right Visual Compass & HUD
-            Column(
+            // Right Visual Map Picker & Visual HUD
+            Box(
                 modifier = Modifier
-                    .weight(1.5f)
+                    .weight(2.0f)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(12.dp))
-                    .background(SurfaceCard)
+                    .background(currentThemeState.value.mapBackground)
                     .border(1.dp, BorderColor, RoundedCornerShape(12.dp))
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(Localization.get("compass_title", lang), fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp)
-
-                if (selectedSchedule == null) {
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Text(Localization.get("compass_help", lang), color = TextSecondary, textAlign = TextAlign.Center)
+                if (isMapLoading) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        CircularProgressIndicator(color = AccentPurple)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(mapLoadProgress, color = TextPrimary, fontSize = 14.sp)
+                    }
+                } else if (mapLoadError != null) {
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(mapLoadError, color = Color.Red, fontSize = 14.sp, textAlign = TextAlign.Center)
                     }
                 } else {
-                    // Compass Display
-                    Box(
+                    val path = remember { Path() }
+                    // 🗺️ INTERACTIVE MAP CANVAS
+                    Canvas(
                         modifier = Modifier
-                            .weight(1f)
-                            .padding(24.dp),
-                        contentAlignment = Alignment.Center
+                            .fillMaxSize()
+                            .pointerInput(mapZoom) {
+                                detectDragGestures { change, dragAmount ->
+                                    change.consume()
+                                    val cx = getPixelX(mapCenterLon, mapZoom)
+                                    val cy = getPixelY(mapCenterLat, mapZoom)
+                                    val newCx = cx - dragAmount.x
+                                    val newCy = cy - dragAmount.y
+                                    mapCenterLon = pixelXToLon(newCx, mapZoom)
+                                    mapCenterLat = pixelYToLat(newCy, mapZoom)
+                                }
+                            }
+                            .onPointerEvent(PointerEventType.Scroll) { event ->
+                                val delta = event.changes.firstOrNull()?.scrollDelta?.y ?: 0f
+                                if (delta != 0f) {
+                                    val zoomChange = if (delta < 0) 0.5 else -0.5
+                                    mapZoom = (mapZoom + zoomChange).coerceIn(10.0, 18.0)
+                                }
+                            }
                     ) {
-                        Canvas(modifier = Modifier.size(180.dp)) {
-                            val center = Offset(size.width / 2, size.height / 2)
-                            val radius = size.minDimension / 2
+                        val activeMapData = mapData ?: SimulatedMapData.data
+                        val canvasWidth = size.width
+                        val canvasHeight = size.height
+                        val centerX = getPixelX(mapCenterLon, mapZoom)
+                        val centerY = getPixelY(mapCenterLat, mapZoom)
 
-                            // Draw Dial Outline
-                            drawCircle(
-                                color = BorderColor.copy(alpha = 0.4f),
-                                radius = radius,
-                                center = center,
-                                style = androidx.compose.ui.graphics.drawscope.Stroke(width = 4.dp.toPx())
-                            )
-                            drawCircle(
-                                color = SurfaceCard,
-                                radius = radius - 4.dp.toPx(),
-                                center = center
-                            )
+                        fun toScreenX(lon: Double): Float = ((canvasWidth / 2) + (getPixelX(lon, mapZoom) - centerX)).toFloat()
+                        fun toScreenY(lat: Double): Float = ((canvasHeight / 2) + (getPixelY(lat, mapZoom) - centerY)).toFloat()
 
-                            // Draw Compass markings
-                            val textStyle = TextStyle(
-                                color = Color.White,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                            
-                            val sizeN = textMeasurer.measure("N")
-                            drawText(
-                                textMeasurer = textMeasurer,
-                                text = "N",
-                                topLeft = Offset(center.x - sizeN.size.width / 2, center.y - radius + 10f),
-                                style = textStyle
-                            )
-                            
-                            val sizeS = textMeasurer.measure("S")
-                            drawText(
-                                textMeasurer = textMeasurer,
-                                text = "S",
-                                topLeft = Offset(center.x - sizeS.size.width / 2, center.y + radius - 30f),
-                                style = textStyle
-                            )
+                        val minLon = pixelXToLon(centerX - canvasWidth / 2, mapZoom)
+                        val maxLon = pixelXToLon(centerX + canvasWidth / 2, mapZoom)
+                        val minLat = pixelYToLat(centerY + canvasHeight / 2, mapZoom)
+                        val maxLat = pixelYToLat(centerY - canvasHeight / 2, mapZoom)
 
-                            val sizeE = textMeasurer.measure("E")
-                            drawText(
-                                textMeasurer = textMeasurer,
-                                text = "E",
-                                topLeft = Offset(center.x + radius - 25f, center.y - sizeE.size.height / 2),
-                                style = textStyle
-                            )
+                        val visibleWays = spatialIndex?.queryWays(minLat, maxLat, minLon, maxLon) ?: activeMapData.ways
+                        val visiblePlaces = if (mapZoom >= 10.0) {
+                            spatialIndex?.queryPlaces(minLat, maxLat, minLon, maxLon) ?: activeMapData.places
+                        } else {
+                            emptyList()
+                        }
 
-                            val sizeW = textMeasurer.measure("W")
-                            drawText(
-                                textMeasurer = textMeasurer,
-                                text = "W",
-                                topLeft = Offset(center.x - radius + 15f, center.y - sizeW.size.height / 2),
-                                style = textStyle
-                            )
+                        // 1. Draw Roads & Polygons (Ways)
+                        for (way in visibleWays) {
+                            if (way.maxLat < minLat || way.minLat > maxLat || way.maxLon < minLon || way.minLon > maxLon) continue
 
-                            // Rotate Needle pointing to bearing angle
-                            val needleAngleRad = (bearingAngle - 90.0) * PI / 180.0
-                            val needleLength = radius - 40.dp.toPx()
-                            val needleTip = Offset(
-                                (center.x + needleLength * cos(needleAngleRad)).toFloat(),
-                                (center.y + needleLength * sin(needleAngleRad)).toFloat()
-                            )
-                            val needleTail = Offset(
-                                (center.x - 20.dp.toPx() * cos(needleAngleRad)).toFloat(),
-                                (center.y - 20.dp.toPx() * sin(needleAngleRad)).toFloat()
-                            )
+                            // LOD Filter
+                            if (way.type == "building" && mapZoom < 15.0) continue
+                            if (way.type == "water" && mapZoom < 12.0) continue
 
-                            // Draw Needle Line
+                            if (way.type !in listOf("building", "water")) {
+                                if (mapZoom < 11.0 && way.type !in listOf("motorway", "trunk")) continue
+                                if (mapZoom < 13.0 && way.type !in listOf("motorway", "trunk", "primary", "secondary")) continue
+                                if (mapZoom < 14.0 && way.type !in listOf("motorway", "trunk", "primary", "secondary", "tertiary")) continue
+                            }
+
+                            path.reset()
+                            var first = true
+                            for (coord in way.coords) {
+                                val sx = toScreenX(coord.lon)
+                                val sy = toScreenY(coord.lat)
+                                if (first) {
+                                    path.moveTo(sx, sy)
+                                    first = false
+                                } else {
+                                    path.lineTo(sx, sy)
+                                }
+                            }
+
+                            if (way.type == "building") {
+                                // Draw filled building polygon
+                                drawPath(
+                                    path = path,
+                                    color = currentThemeState.value.surfaceCardColor.copy(alpha = 0.6f),
+                                    style = androidx.compose.ui.graphics.drawscope.Fill
+                                )
+                                drawPath(
+                                    path = path,
+                                    color = currentThemeState.value.accentPurpleColor.copy(alpha = 0.25f),
+                                    style = Stroke(width = 0.8f.dp.toPx())
+                                )
+                            } else if (way.type == "water") {
+                                // Draw filled water body
+                                drawPath(
+                                    path = path,
+                                    color = currentThemeState.value.mapWater,
+                                    style = androidx.compose.ui.graphics.drawscope.Fill
+                                )
+                            } else {
+                                // Draw regular road stroke
+                                drawPath(
+                                    path = path,
+                                    color = getRoadColor(way.type, currentThemeState.value),
+                                    style = Stroke(width = getRoadWidthDp(way.type, mapZoom).dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                                )
+                            }
+                        }
+
+                        // 2. Draw Route to Target
+                        val currentLoc = Location("Current", myLat.toDoubleOrNull() ?: 37.5665, myLon.toDoubleOrNull() ?: 126.9780)
+                        val targetLoc = selectedSchedule?.location
+                        if (targetLoc != null) {
+                            val startX = toScreenX(currentLoc.longitude)
+                            val startY = toScreenY(currentLoc.latitude)
+                            val endX = toScreenX(targetLoc.longitude)
+                            val endY = toScreenY(targetLoc.latitude)
+
+                            // Route Line (Dotted light blue)
                             drawLine(
-                                color = AccentPurple,
-                                start = center,
-                                end = needleTip,
-                                strokeWidth = 5.dp.toPx()
-                            )
-                            drawLine(
-                                color = TextSecondary,
-                                start = center,
-                                end = needleTail,
-                                strokeWidth = 3.dp.toPx()
-                            )
-                            drawCircle(
                                 color = AccentCyan,
-                                radius = 8.dp.toPx(),
-                                center = center
+                                start = Offset(startX, startY),
+                                end = Offset(endX, endY),
+                                strokeWidth = 3.dp.toPx(),
+                                pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(15f, 15f), 0f)
                             )
+
+                            // Target Marker (Red Circle)
+                            drawCircle(
+                                color = Color.Red,
+                                radius = 9.dp.toPx(),
+                                center = Offset(endX, endY)
+                            )
+                            drawCircle(
+                                color = Color.White,
+                                radius = 4.dp.toPx(),
+                                center = Offset(endX, endY)
+                            )
+                        }
+
+                        // 3. Draw My Location Indicator (Blue/Purple Circle)
+                        val myX = toScreenX(currentLoc.longitude)
+                        val myY = toScreenY(currentLoc.latitude)
+                        drawCircle(
+                            color = AccentPurple,
+                            radius = 9.dp.toPx(),
+                            center = Offset(myX, myY)
+                        )
+                        drawCircle(
+                            color = Color.White,
+                            radius = 3.dp.toPx(),
+                            center = Offset(myX, myY)
+                        )
+
+                        // 4. Draw Place Labels
+                        if (mapZoom >= 10.0) {
+                            fun getPlacePriority(place: OsmPlace): Float {
+                                if (place.tags.containsKey("shop")) return 55f + (place.name.length * 0.1f)
+                                if (place.tags.containsKey("building")) return 54f + (place.name.length * 0.1f)
+                                if (place.tags.containsKey("amenity")) return 53f + (place.name.length * 0.1f)
+
+                                val base = when (place.type) {
+                                    "city" -> 100f
+                                    "town" -> 90f
+                                    "village" -> 80f
+                                    "suburb" -> 70f
+                                    "neighbourhood" -> 60f
+                                    "station" -> 50f
+                                    "attraction", "tourism" -> 40f
+                                    "city_hall", "park", "monument" -> 30f
+                                    else -> 20f
+                                }
+                                return base + (place.name.length * 0.1f)
+                            }
+
+                            val sortedPlaces = visiblePlaces
+                                .filter { place ->
+                                    if (place.type == "road" || place.type == "highway") return@filter false
+                                    val isShopOrBuilding = place.tags.containsKey("shop") || 
+                                                           place.tags.containsKey("building") || 
+                                                           place.tags.containsKey("amenity")
+                                    if (isShopOrBuilding) {
+                                        mapZoom >= 14.0
+                                    } else {
+                                        shouldShowPlace(place.type, mapZoom)
+                                    }
+                                }
+                                .sortedByDescending { getPlacePriority(it) }
+
+                            class PlacedLabel(val left: Float, val top: Float, val right: Float, val bottom: Float)
+                            val placedLabels = mutableListOf<PlacedLabel>()
+
+                            for (place in sortedPlaces) {
+                                if (place.lat < minLat || place.lat > maxLat || place.lon < minLon || place.lon > maxLon) continue
+
+                                val px = toScreenX(place.lon)
+                                val py = toScreenY(place.lat)
+
+                                val labelStyle = TextStyle(
+                                    color = currentThemeState.value.textPrimaryColor,
+                                    fontSize = if (place.type in listOf("city", "town")) 11.sp else 9.sp,
+                                    fontWeight = if (place.type in listOf("city", "town")) FontWeight.Bold else FontWeight.Normal
+                                )
+                                val measured = textMeasurer.measure(place.name)
+                                val labelWidth = measured.size.width.toFloat()
+                                val labelHeight = measured.size.height.toFloat()
+
+                                val left = px + 4.dp.toPx()
+                                val top = py - labelHeight / 2
+                                val right = left + labelWidth
+                                val bottom = top + labelHeight
+
+                                if (left < 0 || right > canvasWidth || top < 0 || bottom > canvasHeight) continue
+
+                                val padding = 8.dp.toPx()
+                                val curLeft = left - padding
+                                val curTop = top - padding
+                                val curRight = right + padding
+                                val curBottom = bottom + padding
+
+                                var hasCollision = false
+                                for (rect in placedLabels) {
+                                    if (!(curRight < rect.left || curLeft > rect.right || curBottom < rect.top || curTop > rect.bottom)) {
+                                        hasCollision = true
+                                        break
+                                    }
+                                }
+
+                                if (!hasCollision) {
+                                    placedLabels.add(PlacedLabel(curLeft, curTop, curRight, curBottom))
+
+                                    drawCircle(
+                                        color = currentThemeState.value.accentPurpleColor.copy(alpha = 0.7f),
+                                        radius = 2.5f.dp.toPx(),
+                                        center = Offset(px, py)
+                                    )
+
+                                    drawText(
+                                        textMeasurer = textMeasurer,
+                                        text = place.name,
+                                        topLeft = Offset(left, top),
+                                        style = labelStyle
+                                    )
+                                }
+                            }
                         }
                     }
 
-                    // HUD stats
-                    Row(
+                    // Floating Compass Overlay (placed in top right corner of map view)
+                    if (selectedSchedule != null) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(16.dp)
+                                .size(110.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(SurfaceCard.copy(alpha = 0.8f))
+                                .border(1.dp, BorderColor.copy(alpha = 0.5f), RoundedCornerShape(50))
+                                .padding(10.dp)
+                        ) {
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val center = Offset(size.width / 2, size.height / 2)
+                                val radius = size.minDimension / 2
+
+                                // Dial
+                                drawCircle(
+                                    color = BorderColor.copy(alpha = 0.3f),
+                                    radius = radius,
+                                    center = center,
+                                    style = Stroke(width = 2.dp.toPx())
+                                )
+
+                                // Text N
+                                val measuredN = textMeasurer.measure("N")
+                                drawText(
+                                    textMeasurer = textMeasurer,
+                                    text = "N",
+                                    topLeft = Offset(center.x - measuredN.size.width / 2, center.y - radius + 4f),
+                                    style = TextStyle(color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                )
+
+                                // Pointer
+                                val angleRad = (bearingAngle - 90.0) * PI / 180.0
+                                val pointerLen = radius - 8.dp.toPx()
+                                val tip = Offset(
+                                    (center.x + pointerLen * cos(angleRad)).toFloat(),
+                                    (center.y + pointerLen * sin(angleRad)).toFloat()
+                                )
+                                val tail = Offset(
+                                    (center.x - 8.dp.toPx() * cos(angleRad)).toFloat(),
+                                    (center.y - 8.dp.toPx() * sin(angleRad)).toFloat()
+                                )
+
+                                drawLine(
+                                    color = AccentCyan,
+                                    start = center,
+                                    end = tip,
+                                    strokeWidth = 3.dp.toPx()
+                                )
+                                drawLine(
+                                    color = TextSecondary,
+                                    start = center,
+                                    end = tail,
+                                    strokeWidth = 2.dp.toPx()
+                                )
+                                drawCircle(AccentPurple, radius = 4.dp.toPx(), center = center)
+                            }
+                        }
+                    }
+
+                    // Zoom buttons on Map HUD
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(SlateDarkBg)
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceAround
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp)
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(Localization.get("bearing", lang), fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
-                            Text("${bearingAngle.toInt()}°", fontSize = 18.sp, color = AccentPurple, fontWeight = FontWeight.Bold)
+                        Button(
+                            onClick = { mapZoom = (mapZoom + 0.5).coerceAtMost(18.0) },
+                            colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard.copy(alpha = 0.9f)),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Text("+", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(Localization.get("distance", lang), fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
-                            Text("${((distanceKm * 100.0).toInt()) / 100.0} km", fontSize = 18.sp, color = AccentCyan, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Button(
+                            onClick = { mapZoom = (mapZoom - 0.5).coerceAtLeast(8.0) },
+                            colors = ButtonDefaults.buttonColors(containerColor = SurfaceCard.copy(alpha = 0.9f)),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Text("-", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         }
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(Localization.get("duration", lang), fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
-                            Text("${etaMinutes.toInt()} min", fontSize = 18.sp, color = ActiveGreen, fontWeight = FontWeight.Bold)
+                    }
+
+                    // Glassmorphic Stats HUD at bottom center
+                    if (selectedSchedule != null) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .padding(16.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(SurfaceCard.copy(alpha = 0.85f))
+                                .border(1.dp, BorderColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 24.dp, vertical = 12.dp)
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(Localization.get("bearing", lang), fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                                    Text("${bearingAngle.toInt()}°", fontSize = 16.sp, color = AccentPurple, fontWeight = FontWeight.Bold)
+                                }
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(Localization.get("distance", lang), fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                                    Text("${((distanceKm * 100.0).toInt()) / 100.0} km", fontSize = 16.sp, color = AccentCyan, fontWeight = FontWeight.Bold)
+                                }
+                                Column(horizontalAlignment = Alignment.Start) {
+                                    Text(
+                                        text = if (lang == Language.KOREAN) "예상 소요 시간" else "ESTIMATED DURATION",
+                                        fontSize = 9.sp,
+                                        color = TextSecondary,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                    Column(
+                                        modifier = Modifier
+                                            .border(0.5.dp, BorderColor, RoundedCornerShape(6.dp))
+                                            .background(SlateDarkBg.copy(alpha = 0.5f))
+                                            .padding(horizontal = 8.dp, vertical = 6.dp)
+                                    ) {
+                                        // Walking row
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            modifier = Modifier.width(160.dp)
+                                        ) {
+                                            Text("🚶 " + (if (lang == Language.KOREAN) "도보 (15분/km)" else "Walk (15m/km)"), fontSize = 10.sp, color = TextPrimary)
+                                            val walkTime = distanceKm * 15.0
+                                            val walkText = if (walkTime < 1.0) {
+                                                "${(walkTime * 60).toInt()}초"
+                                            } else if (walkTime >= 60.0) {
+                                                "${(walkTime / 60).toInt()}시간 ${(walkTime % 60).toInt()}분"
+                                            } else {
+                                                "${walkTime.toInt()}분"
+                                            }
+                                            Text(walkText, fontSize = 11.sp, color = AccentPurple, fontWeight = FontWeight.Bold)
+                                        }
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        // Divider line
+                                        Box(modifier = Modifier.width(160.dp).height(0.5.dp).background(BorderColor))
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        // Driving row
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            modifier = Modifier.width(160.dp)
+                                        ) {
+                                            Text("🚗 " + (if (lang == Language.KOREAN) "운전 (5분/km)" else "Drive (5m/km)"), fontSize = 10.sp, color = TextPrimary)
+                                            val driveTime = distanceKm * 5.0
+                                            val driveText = if (driveTime < 1.0) {
+                                                "${(driveTime * 60).toInt()}초"
+                                            } else if (driveTime >= 60.0) {
+                                                "${(driveTime / 60).toInt()}시간 ${(driveTime % 60).toInt()}분"
+                                            } else {
+                                                "${driveTime.toInt()}분"
+                                            }
+                                            Text(driveText, fontSize = 11.sp, color = ActiveGreen, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -2284,7 +3223,8 @@ fun AiSocketTab(
                         onValueChange = { onPortChange(it.toIntOrNull() ?: 9090) },
                         label = { Text(Localization.get("local_port", lang)) },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = !isActive // Lock when running
+                        enabled = !isActive, // Lock when running
+                        colors = appTextFieldColors()
                     )
                 }
 
@@ -2787,64 +3727,153 @@ fun SettingsTab(lang: Language) {
                     }
                 }
                 
-                // Theme Settings Section
-                Spacer(modifier = Modifier.height(16.dp))
-                Column(
+            }
+            
+            Spacer(modifier = Modifier.width(20.dp))
+            
+            // Column 2 (Right): Theme Selector & Generator Preview
+            Column(
+                modifier = Modifier
+                    .weight(1.2f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(SurfaceCard)
+                    .border(1.dp, BorderColor, RoundedCornerShape(12.dp))
+                    .padding(16.dp)
+            ) {
+                Text("THEME & PALETTE SPECIFICATION", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = AccentCyan)
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // LazyColumn for Theme Choices
+                LazyColumn(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(SlateDarkBg)
-                        .border(0.5.dp, BorderColor, RoundedCornerShape(8.dp))
-                        .padding(12.dp)
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = Localization.get("theme_mode", lang).uppercase(),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = AccentPurple
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        val darkSelected = isDarkModeState.value
+                    items(AppThemes.allThemes) { theme ->
+                        val isSelected = currentThemeState.value.id == theme.id
+                        val borderCol = if (isSelected) AccentPurple else BorderColor
+                        val bgCol = if (isSelected) AccentPurple.copy(alpha = 0.1f) else SlateDarkBg
                         
-                        Button(
-                            onClick = { isDarkModeState.value = true },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (darkSelected) AccentPurple else SlateDarkBg,
-                                contentColor = if (darkSelected) SlateDarkBg else TextPrimary
-                            ),
-                            border = BorderStroke(0.5.dp, BorderColor),
-                            shape = RoundedCornerShape(6.dp),
-                            contentPadding = PaddingValues(vertical = 4.dp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(bgCol)
+                                .border(1.dp, borderCol, RoundedCornerShape(8.dp))
+                                .clickable {
+                                    currentThemeState.value = theme
+                                    isDarkModeState.value = theme.isDark
+                                }
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.DarkMode, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(Localization.get("theme_dark", lang), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                            Column {
+                                Text(
+                                    text = if (lang == Language.KOREAN) theme.nameKo else theme.nameEn,
+                                    color = TextPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (theme.isDark) "Dark Scheme" else "Light Scheme",
+                                    color = TextSecondary,
+                                    fontSize = 10.sp
+                                )
+                            }
+                            
+                            // Color circles preview
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                val previewColors = listOf(
+                                    theme.backgroundColor,
+                                    theme.surfaceCardColor,
+                                    theme.accentPurpleColor,
+                                    theme.accentCyanColor,
+                                    theme.mapBackground
+                                )
+                                for (col in previewColors) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(16.dp)
+                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                            .background(col)
+                                            .border(0.5.dp, if (theme.isDark) Color(0x3BFFFFFF) else Color(0x3B000000), androidx.compose.foundation.shape.CircleShape)
+                                    )
+                                }
                             }
                         }
-                        
-                        Button(
-                            onClick = { isDarkModeState.value = false },
-                            modifier = Modifier.weight(1f),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (!darkSelected) AccentPurple else SlateDarkBg,
-                                contentColor = if (!darkSelected) SlateDarkBg else TextPrimary
-                            ),
-                            border = BorderStroke(0.5.dp, BorderColor),
-                            shape = RoundedCornerShape(6.dp),
-                            contentPadding = PaddingValues(vertical = 4.dp)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Color Specification Grid (for theme generator construction)
+                Text(
+                    text = if (lang == Language.KOREAN) "테마 생성기용 상세 색상 명세" else "DETAILED PALETTE CONFIGURATION",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = AccentPurple
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                
+                val currentTheme = currentThemeState.value
+                val colorSpecs = listOf(
+                    Triple("Background Color", currentTheme.backgroundColor, "Main window & screen backdrop"),
+                    Triple("Surface Card Color", currentTheme.surfaceCardColor, "Sidebars, card containers"),
+                    Triple("Accent Purple Color", currentTheme.accentPurpleColor, "Primary active actions, icons"),
+                    Triple("Accent Cyan Color", currentTheme.accentCyanColor, "Secondary active details, highlights"),
+                    Triple("Text Primary Color", currentTheme.textPrimaryColor, "Primary headings, titles, labels"),
+                    Triple("Text Secondary Color", currentTheme.textSecondaryColor, "Descriptions, subtexts, metadata"),
+                    Triple("Map Background", currentTheme.mapBackground, "GIS map canvas backdrop"),
+                    Triple("Map Motorway Color", currentTheme.mapMotorway, "Highways and primary arterials"),
+                    Triple("Map Minor Road Color", currentTheme.mapMinor, "Local city streets, lanes, passages"),
+                    Triple("Map Water Color", currentTheme.mapWater, "Rivers, oceans, lakes, channels")
+                )
+                
+                LazyColumn(
+                    modifier = Modifier
+                        .height(160.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(SlateDarkBg)
+                        .border(0.5.dp, BorderColor, RoundedCornerShape(6.dp))
+                        .padding(8.dp)
+                ) {
+                    items(colorSpecs) { (name, color, desc) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.LightMode, contentDescription = null, modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(Localization.get("theme_light", lang), fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                                Box(
+                                    modifier = Modifier
+                                        .size(12.dp)
+                                        .clip(RoundedCornerShape(3.dp))
+                                        .background(color)
+                                        .border(0.5.dp, BorderColor, RoundedCornerShape(3.dp))
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(name, fontSize = 10.sp, color = TextPrimary, fontWeight = FontWeight.Bold)
+                                    Text(desc, fontSize = 8.sp, color = TextSecondary)
+                                }
                             }
+                            
+                            val hexStr = "#" + String.format("%02X%02X%02X", (color.red * 255).toInt(), (color.green * 255).toInt(), (color.blue * 255).toInt())
+                            Text(
+                                text = hexStr,
+                                fontSize = 9.sp,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                color = AccentCyan,
+                                modifier = Modifier
+                                    .background(SurfaceCard, RoundedCornerShape(3.dp))
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
                         }
                     }
                 }

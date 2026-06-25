@@ -104,6 +104,7 @@ android {
 compose.desktop {
     application {
         mainClass = "com.orbit.app.MainKt"
+        jvmArgs += listOf("-Xmx4G", "-XX:+UseG1GC")
         nativeDistributions {
             targetFormats(
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb,
