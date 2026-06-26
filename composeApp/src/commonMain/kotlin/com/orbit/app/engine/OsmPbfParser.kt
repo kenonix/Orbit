@@ -49,6 +49,9 @@ data class OsmMapData(
     val ways: List<OsmWay>
 )
 
+@Serializable
+data class MapCacheMetadata(val placeChunks: Int, val wayChunks: Int)
+
 object OsmPbfParser {
 
     private val json = Json {
@@ -56,40 +59,123 @@ object OsmPbfParser {
         coerceInputValues = true
     }
 
-    // Save map data to local GZIP compressed JSON cache
+    @OptIn(ExperimentalSerializationApi::class)
+    private fun <T> saveChunk(file: File, data: T, serializer: kotlinx.serialization.KSerializer<T>) {
+        FileOutputStream(file).use { fos ->
+            BufferedOutputStream(fos).use { bos ->
+                GZIPOutputStream(bos).use { gzos ->
+                    json.encodeToStream(serializer, data, gzos)
+                }
+            }
+        }
+    }
+
+    @OptIn(ExperimentalSerializationApi::class)
+    private fun <T> loadChunk(file: File, serializer: kotlinx.serialization.KSerializer<T>): T {
+        return FileInputStream(file).use { fis ->
+            BufferedInputStream(fis).use { bis ->
+                GZIPInputStream(bis).use { gzis ->
+                    json.decodeFromStream(serializer, gzis)
+                }
+            }
+        }
+    }
+
+    // Save map data to local GZIP compressed JSON cache in parallel
     @OptIn(ExperimentalSerializationApi::class)
     fun saveToCache(cacheFile: File, mapData: OsmMapData) {
         try {
-            FileOutputStream(cacheFile).use { fos ->
-                BufferedOutputStream(fos).use { bos ->
-                    GZIPOutputStream(bos).use { gzos ->
-                        json.encodeToStream(OsmMapData.serializer(), mapData, gzos)
-                    }
+            val numChunks = 8
+            val chunkDir = File(cacheFile.parentFile, cacheFile.name + ".chunks")
+            chunkDir.mkdirs()
+            
+            // Delete old chunk files if any
+            chunkDir.listFiles()?.forEach { it.delete() }
+
+            // Split places
+            val placeChunks = mapData.places.chunked(maxOf(1, mapData.places.size / numChunks + 1))
+            // Split ways
+            val wayChunks = mapData.ways.chunked(maxOf(1, mapData.ways.size / numChunks + 1))
+
+            // Save metadata
+            val metadataFile = File(chunkDir, "metadata.json")
+            val metadata = MapCacheMetadata(placeChunks.size, wayChunks.size)
+            metadataFile.writeText(json.encodeToString(MapCacheMetadata.serializer(), metadata))
+
+            runBlocking(Dispatchers.Default) {
+                val jobs = ArrayList<Job>()
+                
+                // Save places in parallel
+                placeChunks.forEachIndexed { idx, chunk ->
+                    jobs.add(launch {
+                        val file = File(chunkDir, "places_$idx.json.gz")
+                        saveChunk(file, chunk, kotlinx.serialization.builtins.ListSerializer(OsmPlace.serializer()))
+                    })
                 }
+                
+                // Save ways in parallel
+                wayChunks.forEachIndexed { idx, chunk ->
+                    jobs.add(launch {
+                        val file = File(chunkDir, "ways_$idx.json.gz")
+                        saveChunk(file, chunk, kotlinx.serialization.builtins.ListSerializer(OsmWay.serializer()))
+                    })
+                }
+                
+                jobs.joinAll()
             }
+            
+            // Write a dummy main cache file to indicate success
+            cacheFile.writeText("SUCCESS")
         } catch (e: Exception) {
             println("Failed to write map cache: ${e.message}")
             e.printStackTrace()
         }
     }
 
-    // Load map data from local GZIP compressed JSON cache
+    // Load map data from local GZIP compressed JSON cache in parallel
     @OptIn(ExperimentalSerializationApi::class)
     fun loadFromCache(cacheFile: File): OsmMapData {
-        return FileInputStream(cacheFile).use { fis ->
-            BufferedInputStream(fis).use { bis ->
-                GZIPInputStream(bis).use { gzis ->
-                    json.decodeFromStream(OsmMapData.serializer(), gzis)
-                }
-            }
+        val chunkDir = File(cacheFile.parentFile, cacheFile.name + ".chunks")
+        val metadataFile = File(chunkDir, "metadata.json")
+        if (!metadataFile.exists()) {
+            throw Exception("Metadata file not found")
         }
+        val metadataText = metadataFile.readText()
+        val metadata = json.decodeFromString(MapCacheMetadata.serializer(), metadataText)
+        
+        val places = java.util.Collections.synchronizedList(ArrayList<OsmPlace>())
+        val ways = java.util.Collections.synchronizedList(ArrayList<OsmWay>())
+        
+        runBlocking(Dispatchers.Default) {
+            val jobs = ArrayList<Job>()
+            
+            for (i in 0 until metadata.placeChunks) {
+                jobs.add(launch {
+                    val file = File(chunkDir, "places_$i.json.gz")
+                    val chunk = loadChunk(file, kotlinx.serialization.builtins.ListSerializer(OsmPlace.serializer()))
+                    places.addAll(chunk)
+                })
+            }
+            
+            for (i in 0 until metadata.wayChunks) {
+                jobs.add(launch {
+                    val file = File(chunkDir, "ways_$i.json.gz")
+                    val chunk = loadChunk(file, kotlinx.serialization.builtins.ListSerializer(OsmWay.serializer()))
+                    ways.addAll(chunk)
+                })
+            }
+            
+            jobs.joinAll()
+        }
+        
+        return OsmMapData(places.toList(), ways.toList())
     }
 
     // Main parsing function
     suspend fun parsePbf(file: File): OsmMapData = coroutineScope {
-        val referencedNodes = java.util.concurrent.ConcurrentHashMap.newKeySet<Long>()
+        val referencedNodes = ConcurrentPrimitiveLongSet(12_000_000)
         val places = java.util.Collections.synchronizedList(ArrayList<OsmPlace>())
-        val nodeCoords = java.util.concurrent.ConcurrentHashMap<Long, OsmCoord>()
+        val nodeCoords = ConcurrentPrimitiveNodeMap(12_000_000)
         val ways = java.util.Collections.synchronizedList(ArrayList<OsmWay>())
 
         val blocks = ArrayList<ByteArray>()
@@ -242,7 +328,7 @@ object OsmPbfParser {
         return list
     }
 
-    private fun parseBlockForRefs(bytes: ByteArray, referencedNodes: MutableSet<Long>) {
+    private fun parseBlockForRefs(bytes: ByteArray, referencedNodes: ConcurrentPrimitiveLongSet) {
         val blockReader = ProtoReader(bytes)
         var stringTable: List<String> = emptyList()
         val groups = ArrayList<ByteArray>()
@@ -279,15 +365,15 @@ object OsmPbfParser {
                         }
                     }
 
-                    var isHighway = false
+                    var isInteresting = false
                     for (kIdx in keys) {
                         val kStr = stringTable.getOrNull(kIdx)
-                        if (kStr == "highway") {
-                            isHighway = true
+                        if (kStr == "highway" || kStr == "building" || kStr == "water" || kStr == "natural" || kStr == "waterway") {
+                            isInteresting = true
                             break
                         }
                     }
-                    if (isHighway && refs.isNotEmpty()) {
+                    if (isInteresting && refs.isNotEmpty()) {
                         var currentRef = 0L
                         for (delta in refs) {
                             currentRef += delta
@@ -303,8 +389,8 @@ object OsmPbfParser {
 
     private fun parseNodesAndPlaces(
         bytes: ByteArray,
-        referencedNodes: MutableSet<Long>,
-        nodeCoords: MutableMap<Long, OsmCoord>,
+        referencedNodes: ConcurrentPrimitiveLongSet,
+        nodeCoords: ConcurrentPrimitiveNodeMap,
         places: MutableList<OsmPlace>
     ) {
         val blockReader = ProtoReader(bytes)
@@ -382,7 +468,7 @@ object OsmPbfParser {
                         }
 
                         if (referencedNodes.contains(currentId)) {
-                            nodeCoords[currentId] = OsmCoord(latDeg, lonDeg)
+                            nodeCoords.put(currentId, latDeg, lonDeg)
                         }
 
                         val name = tags["name"] ?: tags["name:ko"] ?: tags["name:en"]
@@ -400,7 +486,7 @@ object OsmPbfParser {
 
     private fun parseWaysAndBuildGeometry(
         bytes: ByteArray,
-        nodeCoords: MutableMap<Long, OsmCoord>,
+        nodeCoords: ConcurrentPrimitiveNodeMap,
         ways: MutableList<OsmWay>,
         places: MutableList<OsmPlace>
     ) {
@@ -460,7 +546,7 @@ object OsmPbfParser {
                     var currentRef = 0L
                     for (delta in refs) {
                         currentRef += delta
-                        val coord = nodeCoords[currentRef]
+                        val coord = nodeCoords.get(currentRef)
                         if (coord != null) {
                             coords.add(coord)
                         }
@@ -481,7 +567,18 @@ object OsmPbfParser {
                         val isBuilding = tags.containsKey("building")
                         val isWater = tags.containsKey("water") || tags["natural"] == "water" || tags["waterway"] != null
                         if (highway != null || isBuilding || isWater) {
-                            val type = highway ?: if (isBuilding) "building" else "water"
+                            val type = if (highway != null) {
+                                highway
+                            } else if (isBuilding) {
+                                "building"
+                            } else {
+                                val ww = tags["waterway"]
+                                if (ww == "river" || ww == "stream" || ww == "canal" || ww == "drain") {
+                                    "waterway_line"
+                                } else {
+                                    "water"
+                                }
+                            }
                             ways.add(OsmWay(id, name ?: "", type, coords, tags, minLat, maxLat, minLon, maxLon))
                         }
 
@@ -631,4 +728,130 @@ object SimulatedMapData {
             )
         )
     )
+}
+
+class ConcurrentPrimitiveLongSet(totalExpectedItems: Int) {
+    private val numSegments = 64
+    private val segmentCapacity = getPowerOfTwo(totalExpectedItems / numSegments * 2)
+    private val segments = Array(numSegments) { Segment(segmentCapacity) }
+
+    private fun getPowerOfTwo(n: Int): Int {
+        var target = 1024
+        while (target < n) {
+            target = target shl 1
+        }
+        return target
+    }
+
+    private class Segment(capacity: Int) {
+        val keys = LongArray(capacity)
+        val mask = capacity - 1
+
+        @Synchronized
+        fun add(id: Long): Boolean {
+            var idx = (id xor (id ushr 32)).toInt() and mask
+            var probes = 0
+            while (true) {
+                val k = keys[idx]
+                if (k == 0L) {
+                    keys[idx] = id
+                    return true
+                }
+                if (k == id) {
+                    return false
+                }
+                idx = (idx + 1) and mask
+                if (probes++ > 1000) {
+                    // Safe guard against table full
+                    return false
+                }
+            }
+        }
+
+        fun contains(id: Long): Boolean {
+            var idx = (id xor (id ushr 32)).toInt() and mask
+            var probes = 0
+            while (true) {
+                val k = keys[idx]
+                if (k == 0L) return false
+                if (k == id) return true
+                idx = (idx + 1) and mask
+                if (probes++ > 1000) return false
+            }
+        }
+    }
+
+    fun add(id: Long) {
+        if (id == 0L) return
+        val segmentIdx = ((id xor (id ushr 32)).toInt() and 0x7FFFFFFF) % numSegments
+        segments[segmentIdx].add(id)
+    }
+
+    fun contains(id: Long): Boolean {
+        if (id == 0L) return false
+        val segmentIdx = ((id xor (id ushr 32)).toInt() and 0x7FFFFFFF) % numSegments
+        return segments[segmentIdx].contains(id)
+    }
+}
+
+class ConcurrentPrimitiveNodeMap(totalExpectedItems: Int) {
+    private val numSegments = 64
+    private val segmentCapacity = getPowerOfTwo(totalExpectedItems / numSegments * 2)
+    private val segments = Array(numSegments) { Segment(segmentCapacity) }
+
+    private fun getPowerOfTwo(n: Int): Int {
+        var target = 1024
+        while (target < n) {
+            target = target shl 1
+        }
+        return target
+    }
+
+    private class Segment(capacity: Int) {
+        val keys = LongArray(capacity)
+        val lats = DoubleArray(capacity)
+        val lons = DoubleArray(capacity)
+        val mask = capacity - 1
+
+        @Synchronized
+        fun put(id: Long, lat: Double, lon: Double) {
+            var idx = (id xor (id ushr 32)).toInt() and mask
+            var probes = 0
+            while (true) {
+                val k = keys[idx]
+                if (k == 0L || k == id) {
+                    keys[idx] = id
+                    lats[idx] = lat
+                    lons[idx] = lon
+                    return
+                }
+                idx = (idx + 1) and mask
+                if (probes++ > 1000) return
+            }
+        }
+
+        fun get(id: Long): OsmCoord? {
+            var idx = (id xor (id ushr 32)).toInt() and mask
+            var probes = 0
+            while (true) {
+                val k = keys[idx]
+                if (k == 0L) return null
+                if (k == id) return OsmCoord(lats[idx], lons[idx])
+                idx = (idx + 1) and mask
+                if (probes++ > 1000) return null
+            }
+        }
+    }
+
+    fun put(id: Long, lat: Double, lon: Double) {
+        if (id == 0L) return
+        val segmentIdx = ((id xor (id ushr 32)).toInt() and 0x7FFFFFFF) % numSegments
+        segments[segmentIdx].put(id, lat, lon)
+    }
+
+    fun get(id: Long): OsmCoord? {
+        if (id == 0L) return null
+        val segmentIdx = ((id xor (id ushr 32)).toInt() and 0x7FFFFFFF) % numSegments
+        return segments[segmentIdx].get(id)
+    }
 }

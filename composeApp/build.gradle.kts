@@ -72,6 +72,18 @@ kotlin {
                 implementation(libs.sqldelight.sqlite.driver)
             }
         }
+
+        val commonTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
+
+        val desktopTest by getting {
+            dependencies {
+                implementation(compose.desktop.currentOs)
+            }
+        }
     }
 }
 
@@ -123,3 +135,8 @@ sqldelight {
         }
     }
 }
+
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    maxHeapSize = "4g"
+}
+
